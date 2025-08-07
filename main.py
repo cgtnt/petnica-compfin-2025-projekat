@@ -1,7 +1,8 @@
 import pandas as pd
 
 # variables
-kurtosis_window = "180D"
+KURTOSIS_WINDOW = "180D"
+FAMA_FRENCH_FACTORS = 'F-F_Research_Data_Factors.csv'
 
 def load_csv(path):
     src = pd.read_csv(path)
@@ -17,18 +18,31 @@ def calculate_kurtosis(frame: pd.DataFrame):
     frame['kurtosis'] = None 
 
     for _, group in frame.groupby('permno'):
-        k = group.set_index('date')['ret'].rolling(window=kurtosis_window).kurt()
+        k = group.set_index('date')['ret'].rolling(window=KURTOSIS_WINDOW).kurt()
         frame.loc[group.index, 'kurtosis'] = k.values
 
     return frame
 
-def sample_month(month: pd.DataFrame):
-    sorted_df = month.sort_values(by='kurtosis')
+def get_quantiles(data: pd.DataFrame, field):
+    sorted_df = data.sort_values(by=field)
+    return pd.qcut(sorted_df[field], q=10, labels=False)
 
-    # Divide into 10 quantiles 
-    quantiles = pd.qcut(sorted_df['kurtosis'], q=10, labels=False)
+def process_quantiles(data: pd.DataFrame, f):
+    quantiles = get_quantiles(data, "kurtosis")
 
-    return quantiles
+    for quantile in range(10):
+        quantile_data = month_data[quantiles == quantile]
+        f(quantile_data) 
+
+def fama_french(data: pd.DataFrame):
+    df = pd.read_csv(FAMA_FRENCH_FACTORS)
+
+
+
+
+def rate_portfolio(portfolio: pd.DataFrame):
+    # ovaj portfolio za mjesec n+1
+    fama_french(portfolio)
 
 # calculate kurtosis
 df = calculate_kurtosis(load_csv('crsp.csv'))
@@ -36,16 +50,10 @@ df = df.dropna(subset=['kurtosis'])
 
 # Extract unique months
 df['month_year'] = df['date'].dt.to_period('M')
-unique_months = df['month_year'].unique()
+months = df['month_year'].unique()
 
 # Iterate over unique months
-for month in unique_months:
+for month in months:
     month_data = df[df['month_year'] == month]
-    quantiles = sample_month(month_data)
-
-    # Iterate over each quantile
-    for quantile in range(10):
-        quantile_data = month_data[quantiles == quantile]
-        print(f"Month: {month}, Quantile: {quantile}")
-        print(quantile_data)  # Replace with your desired operation
+    process_quantiles(month_data, rate_portfolio)
 
