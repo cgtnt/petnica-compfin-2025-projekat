@@ -35,8 +35,9 @@ def process_quantiles(data: pd.DataFrame, f):
         f(quantile_data) 
 
 def fama_french(data: pd.DataFrame):
-    df = pd.read_csv(FAMA_FRENCH_FACTORS)
-
+    factors = pd.read_csv(FAMA_FRENCH_FACTORS)
+    factors['Date'] = pd.to_datetime(factors['Date'], format='%Y%m')
+    factors = factors[factors['Date'].dt.to_period('M').isin(data['month_year'])]
 
 
 
