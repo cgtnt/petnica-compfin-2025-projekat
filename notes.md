@@ -6,4 +6,6 @@ provjeri sharpe ratio za svaki potfolio
 
 sortiraj po kurtoznosti
 uzmi long short potfolije kombinujuci ove quantiljne portfolie
-evaluiraj svaki long short potfolio -> fama french bez kurotze - da li ima alfa
+
+odnosno za svaki quantil i portfolio napravi time series returna i onda runnuj linearenu regresiju - trazi alfu
+
