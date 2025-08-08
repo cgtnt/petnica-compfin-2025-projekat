@@ -1,8 +1,9 @@
 import pandas as pd
+import statsmodels.api as sm
 
 # variables
 KURTOSIS_WINDOW = "180D"
-FAMA_FRENCH_FACTORS = 'F-F_Research_Data_Factors.csv'
+FAMA_FRENCH_FACTORS = '/Users/aleksandarglamocic/python_wu/petnica-compfin-2025-projekat/F-F_Research_Data_Factors.csv'
 
 def load_csv(path):
     src = pd.read_csv(path)
@@ -35,9 +36,35 @@ def process_quantiles(data: pd.DataFrame, f):
         f(quantile_data) 
 
 def fama_french(data: pd.DataFrame):
-    factors = pd.read_csv(FAMA_FRENCH_FACTORS)
+    # Load Fama-French factors
+    factors = pd.read_csv(FAMA_FRENCH_FACTORS, skiprows=3)
+    factors = factors.rename(columns={factors.columns[0]: 'Date'})
+    factors = factors[factors['Date'].str.len() == 6]  # remove footer rows
     factors['Date'] = pd.to_datetime(factors['Date'], format='%Y%m')
-    factors = factors[factors['Date'].dt.to_period('M').isin(data['month_year'])]
+    factors['month_year'] = factors['Date'].dt.to_period('M')
+
+    # Keep only necessary columns and ensure consistent naming
+    factors = factors[['month_year', 'Mkt-RF', 'SMB', 'HML', 'RF']]
+    factors = factors.rename(columns={'Mkt-RF': 'MKT_RF'})  # rename to valid Python variable name
+
+    # Make sure 'data' also has month_year as Period
+    data['month_year'] = data['date'].dt.to_period('M')
+
+    # Merge Fama-French factors with stock data
+    result = pd.merge(data, factors, on='month_year', how='left')
+
+    # Compute excess return
+    result['excess_return'] = result['ret'] - result['RF']
+
+    # Prepare regression variables
+    result = result.dropna(subset=['excess_return', 'MKT_RF', 'SMB', 'HML', 'kurtosis'])
+    X = result[['MKT_RF', 'SMB', 'HML', 'kurtosis']]
+    X = sm.add_constant(X)
+    y = result['excess_return']
+
+    # Run regression
+    model = sm.OLS(y, X).fit()
+    print(model.summary())
 
 
 
@@ -46,7 +73,7 @@ def rate_portfolio(portfolio: pd.DataFrame):
     fama_french(portfolio)
 
 # calculate kurtosis
-df = calculate_kurtosis(load_csv('crsp.csv'))
+df = calculate_kurtosis(load_csv('/Users/aleksandarglamocic/python_wu/petnica-compfin-2025-projekat/crsp.csv'))
 df = df.dropna(subset=['kurtosis'])
 
 # Extract unique months
@@ -56,5 +83,7 @@ months = df['month_year'].unique()
 # Iterate over unique months
 for month in months:
     month_data = df[df['month_year'] == month]
-    process_quantiles(month_data, rate_portfolio)
+    # process_quantiles(month_data, rate_portfolio)
+
+
 

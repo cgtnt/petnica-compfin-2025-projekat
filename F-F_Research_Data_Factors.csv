@@ -1,6 +1,3 @@
-This file was created using the 202506 CRSP database.,,,,
-The 1-month TBill rate data until 202405 are from Ibbotson Associates. Starting from 202406, the 1-month TBill rate is from ICE BofA US 1-Month Treasury Bill Index.,,,
-,,,,
 Date,Mkt-RF,SMB,HML,RF
 192607,2.89,-2.55,-2.39,0.22
 192608,2.64,-1.14,3.81,0.25
