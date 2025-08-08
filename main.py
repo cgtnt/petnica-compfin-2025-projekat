@@ -37,7 +37,7 @@ def process_quantiles(data: pd.DataFrame, f):
 
 def fama_french(data: pd.DataFrame):
     # Load Fama-French factors
-    factors = pd.read_csv(FAMA_FRENCH_FACTORS, skiprows=3)
+    factors = pd.read_csv(FAMA_FRENCH_FACTORS)
     factors = factors.rename(columns={factors.columns[0]: 'Date'})
     factors = factors[factors['Date'].str.len() == 6]  # remove footer rows
     factors['Date'] = pd.to_datetime(factors['Date'], format='%Y%m')
