@@ -10,8 +10,11 @@ def load_csv(path):
 
     # preprocessing
     src = src[['permno', 'ticker', 'comnam', 'date', 'prc', 'ret']]
+
+    src['ret'] = pd.to_numeric(src['ret'], errors='coerce')
+    src = src.dropna(subset=['ret'])
+
     src['date'] = pd.to_datetime(src['date'], format='%Y%m%d')
-    src = src.sort_values(by=['permno', 'date'])
 
     return src
 
@@ -22,34 +25,38 @@ def calculate_kurtosis(frame: pd.DataFrame):
         k = group.set_index('date')['ret'].rolling(window=KURTOSIS_WINDOW).kurt()
         frame.loc[group.index, 'kurtosis'] = k.values
 
-    return frame
+    return frame.dropna(subset=['kurtosis'])
 
 def get_quantiles(data: pd.DataFrame, field):
-    sorted_df = data.sort_values(by=field).dropna(subset=[field])
-    print(sorted_df.head(50))
+    sorted_df = data.sort_values(by=field)
     return pd.qcut(sorted_df[field], q=10, labels=False)
 
 def process_quantiles(data: pd.DataFrame, f):
     quantiles = get_quantiles(data, "kurtosis")
 
     for quantile in range(10):
-        quantile_data = month_data[quantiles == quantile]
+        quantile_data = data[quantiles == quantile]
         f(quantile_data) 
 
 def fama_french(data: pd.DataFrame):
     # Load Fama-French factors
     factors = pd.read_csv(FAMA_FRENCH_FACTORS)
-    factors = factors.rename(columns={factors.columns[0]: 'Date'})
     factors['Date'] = pd.to_datetime(factors['Date'], format='%Y%m')
-
-    factors['month_year'] = factors['Date'].dt.to_period('M')
+    
     data['month_year'] = data['date'].dt.to_period('M')
+    factors['month_year'] = factors['Date'].dt.to_period('M')
 
+    print(factors.head())
     print(data.head())
+
+    factors = factors[factors['month_year'].isin(data['month_year'])]
+
+    print(factors.head())
 
     # Keep only necessary columns and ensure consistent naming
     factors = factors[['month_year', 'MKT_RF', 'SMB', 'HML', 'RF']]
 
+    print(factors.head())
     # Adjust scale of factors
     factors['MKT_RF'] = factors['MKT_RF'] / 100
     factors['SMB'] = factors['SMB'] / 100
@@ -78,8 +85,6 @@ def fama_french(data: pd.DataFrame):
     model = sm.OLS(y, X).fit()
     print(model.summary())
 
-    # Extracting the constant (alpha) from the regression model
-    print(f"Params: {model.params}")
 
 def rate_portfolio(portfolio: pd.DataFrame):
     # ovaj portfolio za mjesec n+1
@@ -87,10 +92,10 @@ def rate_portfolio(portfolio: pd.DataFrame):
 
 # calculate kurtosis
 df = calculate_kurtosis(load_csv('crsp.csv'))
-df = df.dropna(subset=['kurtosis'])
 
 # Extract unique months
 df['month_year'] = df['date'].dt.to_period('M')
+df = df[df['month_year'] >= pd.Period('1926-07', freq='M')]
 months = df['month_year'].unique()
 
 # Iterate over unique months
@@ -100,4 +105,4 @@ for month in months:
 
 month_data = df[df['month_year'] == months[1]]
 quantiles = get_quantiles(month_data, "kurtosis")
-print(fama_french(month_data[quantiles == 0]))
+print(fama_french(month_data[quantiles == 9]))
